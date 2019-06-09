@@ -33,6 +33,7 @@ send_discovery(int client)
 
     (void) printf("Client: send_discovery() - sending discovery %u...",
                   (unsigned int) discovery_id);
+    (void) fflush(stdout);
 
     if (send(client,
              &discovery_id,
@@ -42,13 +43,15 @@ send_discovery(int client)
     }
 
     (void) puts("sent");
+    (void) fflush(stdout);
 }
 
 static void
 receive_offer(int  client,
-              char ip_address[IP_ADDRESS_SIZE])
+              char ip_address[INET_ADDRSTRLEN])
 {
     (void) fputs("Client: receive_offer() - receiving offer...", stdout);
+    (void) fflush(stdout);
 
     uint8_t offer_id;
     if (recv(client,
@@ -60,25 +63,27 @@ receive_offer(int  client,
 
     if (recv(client,
              ip_address,
-             IP_ADDRESS_SIZE,
-             0) != IP_ADDRESS_SIZE) {
+             INET_ADDRSTRLEN,
+             0) != INET_ADDRSTRLEN) {
         failure("recv() - IP address");
     }
 
     (void) printf("received offer %u (%s)\n",
                   (unsigned int) offer_id,
                   ip_address);
+    (void) fflush(stdout);
 }
 
 static void
 send_request(int        client,
-             const char ip_address[IP_ADDRESS_SIZE])
+             const char ip_address[INET_ADDRSTRLEN])
 {
     uint8_t request_id = random_octet();
 
     (void) printf("Client: send_request() - sending request %u (%s)...",
                   (unsigned int) request_id,
                   ip_address);
+    (void) fflush(stdout);
 
     if (send(client,
              &request_id,
@@ -89,18 +94,20 @@ send_request(int        client,
 
     if (send(client,
              ip_address,
-             IP_ADDRESS_SIZE,
-             0) != IP_ADDRESS_SIZE) {
+             INET_ADDRSTRLEN,
+             0) != INET_ADDRSTRLEN) {
         failure("send() - IP address");
     }
 
     (void) puts("sent");
+    (void) fflush(stdout);
 }
 
 static void
 receive_ack(int client)
 {
     (void) fputs("Client: receive_ack() - receiving ACK...", stdout);
+    (void) fflush(stdout);
 
     uint8_t ack_id;
     if (recv(client,
@@ -110,7 +117,7 @@ receive_ack(int client)
         failure("recv() - ID");
     }
 
-    char ip_address[IP_ADDRESS_SIZE];
+    char ip_address[INET_ADDRSTRLEN];
     if (recv(client,
              &ip_address,
              sizeof(ip_address),
@@ -121,6 +128,7 @@ receive_ack(int client)
     (void) printf("received ack %u (%s)\n",
                   (unsigned int) ack_id,
                   ip_address);
+    (void) fflush(stdout);
 }
 
 int
@@ -130,7 +138,7 @@ main(void)
 
     send_discovery(client);
 
-    char ip_address[IP_ADDRESS_SIZE];
+    char ip_address[INET_ADDRSTRLEN];
     receive_offer(client, ip_address);
 
     send_request(client, ip_address);

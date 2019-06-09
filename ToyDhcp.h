@@ -15,9 +15,8 @@
 #include <sys/wait.h>
 #include <stdint.h>
 
-/* common constants */
-#define IP_ADDRESS_SIZE sizeof("255.255.255.255")
 
+/* common constants */
 extern uint16_t SERVER_PORT_NUMBER;
 
 

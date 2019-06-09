@@ -41,12 +41,12 @@ create_server_socket()
 
 static int
 accept_client(int                 server,
-              struct sockaddr_in *address)
+              struct sockaddr_in *client_address)
 {
-    socklen_t address_length = sizeof(*address);
-    (void) memset(address, 0, address_length);
+    socklen_t address_length = sizeof(*client_address);
+    (void) memset(client_address, 0, address_length);
     int client = accept(server,
-                        (struct sockaddr *) address,
+                        (struct sockaddr *) client_address,
                         &address_length);
     if (client < 0) {
         failure("accept()");
@@ -54,10 +54,11 @@ accept_client(int                 server,
     return client;
 }
 
-static void
+static uint8_t
 receive_discovery(int client)
 {
     (void) fputs("Server: receive_discovery() - receiving discovery...", stdout);
+    (void) fflush(stdout);
 
     uint8_t discovery_id;
     if (recv(client,
@@ -69,31 +70,35 @@ receive_discovery(int client)
 
     (void) printf("received discovery %u\n",
                   (unsigned int) discovery_id);
+    (void) fflush(stdout);
+
+    return  discovery_id;
 }
 
-static uint8_t
-create_offer(char ip_address[IP_ADDRESS_SIZE])
+static void
+create_offer(uint8_t discovery_id,
+             char    ip_address[INET_ADDRSTRLEN])
 {
-    uint8_t offer_id = random_octet();
     (void) snprintf(ip_address,
-                    IP_ADDRESS_SIZE,
+                    INET_ADDRSTRLEN,
                     "%u.%u.%u.%u",
                     (unsigned int) random_octet(),
                     (unsigned int) random_octet(),
                     (unsigned int) random_octet(),
-                    (unsigned int) offer_id);
-
-    return offer_id;
+                    (unsigned int) discovery_id);
 }
 
 static void
-send_offer(int client)
+send_offer(int     client,
+           uint8_t discovery_id)
 {
-    char ip_address[IP_ADDRESS_SIZE];
-    uint8_t offer_id = create_offer(ip_address);
+    uint8_t offer_id = random_octet();
+    char ip_address[INET_ADDRSTRLEN];
+    create_offer(discovery_id, ip_address);
     (void) printf("Server: send_offer() - sending offer %u (%s)...",
                   (unsigned int) offer_id,
                   ip_address);
+    (void) fflush(stdout);
 
     if (send(client,
              &offer_id,
@@ -104,19 +109,21 @@ send_offer(int client)
 
     if (send(client,
              ip_address,
-             IP_ADDRESS_SIZE,
-             0) != IP_ADDRESS_SIZE) {
+             INET_ADDRSTRLEN,
+             0) != INET_ADDRSTRLEN) {
         failure("send() - IP address");
     }
 
     (void) puts("sent");
+    (void) fflush(stdout);
 }
 
 static void
 receive_request(int  client,
-                char ip_address[IP_ADDRESS_SIZE])
+                char ip_address[INET_ADDRSTRLEN])
 {
     (void) fputs("Server: receive_request() - receiving request...", stdout);
+    (void) fflush(stdout);
 
     uint8_t request_id;
     if (recv(client,
@@ -128,25 +135,27 @@ receive_request(int  client,
 
     if (recv(client,
              ip_address,
-             IP_ADDRESS_SIZE,
-             0) != IP_ADDRESS_SIZE) {
+             INET_ADDRSTRLEN,
+             0) != INET_ADDRSTRLEN) {
         failure("recv() - IP address");
     }
 
     (void) printf("received request %u (%s)\n",
                   (unsigned int) request_id,
                   ip_address);
+    (void) fflush(stdout);
 }
 
 static void
 send_ack(int        client,
-         const char ip_address[IP_ADDRESS_SIZE])
+         const char ip_address[INET_ADDRSTRLEN])
 {
     uint8_t ack_id = random_octet();
 
     (void) printf("Server: send_ack() - sending ACK %u (%s)...",
                   (unsigned int) ack_id,
                   ip_address);
+    (void) fflush(stdout);
 
     if (send(client,
              &ack_id,
@@ -157,26 +166,52 @@ send_ack(int        client,
 
     if (send(client,
              ip_address,
-             IP_ADDRESS_SIZE,
-             0) != IP_ADDRESS_SIZE) {
+             INET_ADDRSTRLEN,
+             0) != INET_ADDRSTRLEN) {
         failure("send() - IP address");
     }
 
     (void) puts("sent");
+    (void) fflush(stdout);
 }
 
+static void
+parse_ip_address(const struct sockaddr_in *address,
+                 char                      readable_ip_address[INET_ADDRSTRLEN])
+{
+    if (inet_ntop(AF_INET,
+                  &address->sin_addr,
+                  readable_ip_address,
+                  INET_ADDRSTRLEN) == NULL) {
+        failure("inet_ntop()");
+    }
+}
 
 static void
-handle_client(int client)
+handle_client(int                       client,
+              const struct sockaddr_in *client_address)
 {
-    receive_discovery(client);
+    char ip_address[INET_ADDRSTRLEN];
+    parse_ip_address(client_address,
+                     ip_address);
 
-    send_offer(client);
+    (void) printf(
+        "================================================================================\n"
+        "Server: handle_client() - handling client %s\n",
+        ip_address
+    );
+    (void) fflush(stdout);
 
-    char ip_address[IP_ADDRESS_SIZE];
+    uint8_t discovery_id = receive_discovery(client);
+
+    send_offer(client, discovery_id);
+
     receive_request(client, ip_address);
 
     send_ack(client, ip_address);
+
+    (void) puts("================================================================================");
+    (void) fflush(stdout);
 }
 
 
@@ -190,7 +225,8 @@ main(void)
         int client = accept_client(server,
                                    &client_address);
 
-        handle_client(client);
+        handle_client(client,
+                      &client_address);
 
         if (close(client) != 0) {
             failure("close()");
