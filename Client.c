@@ -13,13 +13,13 @@ int create_client_socket(const char *server_ip)
 	server_address.sin_port   = htons(SERVER_PORT_NUMBER);
 	if (inet_pton(AF_INET,
                   server_ip,
-                  &server_address.sin_addr)) {
+                  &server_address.sin_addr) != 1) {
 		failure("inet_pton()");
     }
 
 	if (connect(client,
 			    (const struct sockaddr *) &server_address,
-			    sizeof(server_address) != 0)) {
+			    sizeof(server_address)) != 0) {
         failure("connect()");
     }
 
@@ -38,45 +38,60 @@ send_discovery(int client)
              &discovery_id,
              sizeof(discovery_id),
              0) != sizeof(discovery_id)) {
-        failure("send()");
+        failure("send() - ID");
     }
 
     (void) puts("sent");
 }
 
 static void
-receive_offer(int                      client,
-              struct IpAddressMessage *offer)
+receive_offer(int  client,
+              char ip_address[IP_ADDRESS_SIZE])
 {
     (void) fputs("Client: receive_offer() - receiving offer...", stdout);
 
+    uint8_t offer_id;
     if (recv(client,
-             offer,
-             sizeof(*offer),
-             0) != sizeof(*offer)) {
-        failure("recv()");
+             &offer_id,
+             sizeof(offer_id),
+             0) != sizeof(offer_id)) {
+        failure("recv() - ID");
+    }
+
+    if (recv(client,
+             ip_address,
+             IP_ADDRESS_SIZE,
+             0) != IP_ADDRESS_SIZE) {
+        failure("recv() - IP address");
     }
 
     (void) printf("received offer %u (%s)\n",
-                  (unsigned int) offer->id,
-                  offer->address);
+                  (unsigned int) offer_id,
+                  ip_address);
 }
 
 static void
-send_request(int client,
-             struct IpAddressMessage *request)
+send_request(int        client,
+             const char ip_address[IP_ADDRESS_SIZE])
 {
-    request->id = random_octet();
+    uint8_t request_id = random_octet();
 
     (void) printf("Client: send_request() - sending request %u (%s)...",
-                  (unsigned int) request->id,
-                  request->address);
+                  (unsigned int) request_id,
+                  ip_address);
 
     if (send(client,
-             request,
-             sizeof(*request),
-             0) != sizeof(*request)) {
-        failure("send()");
+             &request_id,
+             sizeof(request_id),
+             0) != sizeof(request_id)) {
+        failure("send() - ID");
+    }
+
+    if (send(client,
+             ip_address,
+             IP_ADDRESS_SIZE,
+             0) != IP_ADDRESS_SIZE) {
+        failure("send() - IP address");
     }
 
     (void) puts("sent");
@@ -87,17 +102,25 @@ receive_ack(int client)
 {
     (void) fputs("Client: receive_ack() - receiving ACK...", stdout);
 
-    struct IpAddressMessage ack;
+    uint8_t ack_id;
     if (recv(client,
-             &ack,
-             sizeof(ack),
-             0) != sizeof(ack)) {
-        failure("recv()");
+             &ack_id,
+             sizeof(ack_id),
+             0) != sizeof(ack_id)) {
+        failure("recv() - ID");
+    }
+
+    char ip_address[IP_ADDRESS_SIZE];
+    if (recv(client,
+             &ip_address,
+             sizeof(ip_address),
+             0) != sizeof(ip_address)) {
+        failure("recv() - IP address");
     }
 
     (void) printf("received ack %u (%s)\n",
-                  (unsigned int) ack.id,
-                  ack.address);
+                  (unsigned int) ack_id,
+                  ip_address);
 }
 
 int
@@ -107,10 +130,10 @@ main(void)
 
     send_discovery(client);
 
-    struct IpAddressMessage message;
-    receive_offer(client, &message);
+    char ip_address[IP_ADDRESS_SIZE];
+    receive_offer(client, ip_address);
 
-    send_request(client, &message);
+    send_request(client, ip_address);
 
     receive_ack(client);
 
