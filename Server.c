@@ -1,24 +1,6 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <errno.h>
-#include <string.h>
-#include <netdb.h>
-#include <sys/types.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <sys/wait.h>
-#include <stdint.h>
+#include "ToyDhcp.h"
 
-uint16_t SERVER_PORT_NUMBER = 3300 + 718;
-
-static void
-failure(const char *cause)
-{
-    perror(cause);
-    exit(EXIT_FAILURE);
-}
+int SERVER_BACKLOG = 128;
 
 static int
 create_server_socket()
@@ -28,8 +10,8 @@ create_server_socket()
         failure("socket()");
     }
 
-    int option = SO_REUSEADDR  /* allow other sockets to bind() to this port */
-               | SO_REUSEPORT; /* force reuse of this port */
+    static const int option = SO_REUSEADDR  /* allow other sockets to bind() to this port */
+                            | SO_REUSEPORT; /* force reuse of this port */
     int option_value = 1; /* true */
     if (setsockopt(server,
                    SOL_SOCKET, /* manipulate options at the sockets API level */
@@ -50,6 +32,10 @@ create_server_socket()
         failure("bind()");
     }
 
+    if (listen(server, SERVER_BACKLOG) != 0) {
+        failure("listen()");
+    }
+    
     return server;
 }
 
@@ -66,6 +52,30 @@ accept_client(int                 server,
         failure("accept()");
     }
     return client;
+}
+
+static void
+receive_discovery(int server)
+{
+
+}
+
+static void
+send_offer(int server)
+{
+
+}
+
+static void
+receive_request(int server)
+{
+
+}
+
+static void
+send_ack(int server)
+{
+
 }
 
 
@@ -86,7 +96,13 @@ main(void)
         int client = accept_client(server,
                                    &client_address);
 
-        handle_client(server, client);
+        receive_discovery(client);
+
+        send_offer(client);
+
+        receive_request(client);
+
+        send_ack(client);
 
         if (close(client) != 0) {
             failure("close()");
