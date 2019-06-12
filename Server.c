@@ -1,6 +1,6 @@
 #include "ToyDhcp.h"
 
-int SERVER_BACKLOG = 128;
+const int SERVER_BACKLOG = 128;
 
 static int
 create_server_socket()
@@ -229,12 +229,12 @@ main(void)
                       &client_address);
 
         if (close(client) != 0) {
-            failure("close()");
+            failure("close() - client");
         }
     }
 
     if (close(server) != 0) {
-        failure("close()");
+        failure("close() - server");
     }
 
     return EXIT_SUCCESS;

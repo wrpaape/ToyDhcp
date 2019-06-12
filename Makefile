@@ -6,13 +6,11 @@ LDFLAGS = -lnsl -lresolv
 
 all: Server Client
 
-zip: Server.c Client.c ToyDhcp.h ToyDhcp.c Makefile
+zip: Server.c Client.c ToyDhcp.h ToyDhcp.c Makefile readme.txt README.pdf
 	zip William_Paape_lab2.zip $^
 
-# report.pdf: README.md
-# 	pandoc $< -o $@
-#
-#
+README.pdf: readme.txt
+	pandoc $< -o $@
 
 Server: Server.o ToyDhcp.o
 	$(CC) $(LDFLAGS) $^ -o $@
@@ -30,5 +28,5 @@ clean:
 	$(RM) *.o Server Client
 
 clean-all: clean
-	$(RM) William_Paape_lab2.zip
+	$(RM) README.pdf William_Paape_lab2.zip
 
